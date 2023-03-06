@@ -312,7 +312,18 @@ class V1 extends MY_Controller
     {
         $error_data = [];
         // Check posted values
-      	$_POST = json_decode(file_get_contents('php://input'), true);
+      	if(!empty($_POST))
+        {
+            $POST = $_POST;
+        }
+        else
+        {
+            $POST = json_decode(file_get_contents('php://input'));
+        }
+
+        print_r($POST->email);
+        die;
+
         $email = ($_POST['email'] ? $_POST['email'] : null);
         $password = ($_POST['password'] ? $_POST['password'] : null);
 
