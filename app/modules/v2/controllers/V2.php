@@ -82,6 +82,23 @@ class V2 extends MY_Controller {
         'roles_are_listed'                      => 'Yetki kuralları listeleniyor.',
         'services_is_not_found'                 => 'Servisler bulunamadı.',
         'services_are_listed'                   => 'Servisler listeleniyor.',
+        'full_name_is_required'                 => 'Ad soyad girilmedi.',
+        'email_is_required'                     => 'E-posta adresi girilmedi.',
+        'password_is_required'                  => 'Şifre girilmedi.',
+        'email_is_not_exists'                   => 'E-posta adresi kayıtlı değil.',
+        'password_must_be_least_6_char'         => 'Şifre en az 6 karakter olmalıdır.',
+        'wrong_password'                        => 'Şifreniz hatalı girildi.',
+        'there_is_a_problem'                    => 'Bir sorun oluştu.',
+        'login_success'                         => 'Giriş başarıyla gerçekleşti.',
+        'account_type_is_required'              => 'Hesap tipi seçilmedi.',
+        'email_format_is_incorrect'             => 'E-posta formatı uygun değil.',
+        'email_is_already_exists'               => 'E-posta zaten kullanımda.',
+        'password_repeat_is_required'           => 'Şifre tekrarı gerekli.',
+        'passwords_is_not_equal'                => 'Şifre ve şifre tekrarı uyuşmuyor.',
+        'phone_is_required'                     => 'Telefon numarası gerekli.',
+        'phone_format_is_incorrect'             => 'Telefon numarası formatı uygun değil.',
+        'phone_is_already_exists'               => 'Telefon numarası kullanımda.',
+        'register_success'                      => 'Kayıt başarıyla gerçekleşti.',
     ];
 
     public function __construct()
@@ -92,6 +109,111 @@ class V2 extends MY_Controller {
     public function index()
     {
         return $this->response(200, 'API (v2.0.1) is working...', true, null);
+    }
+
+    public function register()
+    {
+        if(empty(jsonPosts('account_type')))
+        {
+            return $this->response(401, $this->messages['account_type_is_required'], null);
+        }
+        if(empty(jsonPosts('full_name')))
+        {
+            return $this->response(401, $this->messages['full_name_is_required'], null);
+        }
+        if(empty(jsonPosts('email')))
+        {
+            return $this->response(401, $this->messages['email_is_required'], null);
+        }
+        if(!filter_var(jsonPosts('email'), FILTER_VALIDATE_EMAIL))
+        {
+            return $this->response(401, $this->messages['email_format_is_incorrect'], null);
+        }
+        $checkEmail = $this->db->where('email', jsonPosts('email'))->get($this->tables['clients_table'])->row();
+        if(!empty($checkEmail))
+        {
+            return $this->response(401, $this->messages['email_is_already_exists'], null);
+        }
+        if(empty(jsonPosts('password')))
+        {
+            return $this->response(401, $this->messages['password_is_required'], null);
+        }
+        if(strlen(jsonPosts('password')) < 6)
+        {
+            return $this->response(401, $this->messages['password_must_be_least_6_char'], null);
+        }
+        if(empty(jsonPosts('password_repeat')))
+        {
+            return $this->response(401, $this->messages['password_repeat_is_required'], null);
+        }
+        if(jsonPosts('password') !== jsonPosts('password_repeat'))
+        {
+            return $this->response(401, $this->messages['passwords_is_not_equal'], null);
+        }
+        if(empty(jsonPosts('phone')))
+        {
+            return $this->response(401, $this->messages['phone_is_required'], null);
+        }
+        if(!preg_match('/^[0-9]{10}+$/', jsonPosts('phone')))
+        {
+            return $this->response(401, $this->messages['phone_format_is_incorrect'], null);
+        }
+        $checkPhone = $this->db->where('phone', jsonPosts('phone'))->get($this->tables['clients_table'])->row();
+        if(!empty($checkPhone))
+        {
+            return $this->response(401, $this->messages['phone_is_already_exists'], null);
+        }
+        $registerClient = $this->db->insert($this->tables['clients_table'], [
+            'account_type' => jsonPosts('account_type'),
+            'full_name' => jsonPosts('full_name'),
+            'email' => jsonPosts('email'),
+            'password' => password_hash(jsonPosts('password'), PASSWORD_DEFAULT),
+            'phone' => jsonPosts('phone'),
+            'created_at' => date("Y-m-d H:i:s")
+        ]);
+        if(empty($registerClient))
+        {
+            return $this->response(401, $this->messages['there_is_a_problem'], null);
+        }
+        else
+        {
+            return $this->response(201, $this->messages['register_success'], $this->db->insert_id());
+        }
+    }
+
+    public function login()
+    {
+        if(empty(jsonPosts('email')))
+        {
+            return $this->response(401, $this->messages['email_is_required'], null);
+        }
+        if(empty(jsonPosts('password')))
+        {
+            return $this->response(401, $this->messages['password_is_required'], null);
+        }
+        if(strlen(jsonPosts('password')) < 6)
+        {
+            return $this->response(401, $this->messages['password_must_be_least_6_char'], null);
+        }
+        $emailCheck = $this->db->where('email', jsonPosts('email'))->get($this->tables['clients_table'])->row('email');
+        if(empty($emailCheck))
+        {
+            return $this->response(401, $this->messages['email_is_not_exists'], null);
+        }
+        $passwordCheck = $this->db->where('email', jsonPosts('email'))->get($this->tables['clients_table'])->row('password');
+        if(!password_verify(jsonPosts('password'), $passwordCheck))
+        {
+            return $this->response(401, $this->messages['wrong_password'], null);
+        }
+        else
+        {
+            $createJwtToken = $this->createJwtToken(jsonPosts('email'));
+            if(empty($createJwtToken))
+            {
+                return $this->response(401, $this->messages['there_is_a_problem'], null);
+            }
+            return $this->response(201, $this->messages['login_success'], $createJwtToken);
+        }
     }
 
     public function getBankAccounts()

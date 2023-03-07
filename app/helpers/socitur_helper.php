@@ -1,10 +1,31 @@
 <?php
-if(!function_exists('test'))
+if(!function_exists('jsonPosts'))
 {
-    function test($table, $id = null)
+    function jsonPosts($variable = null)
     {
-        $ci =& get_instance();
-        return $ci->Crud_Model->test($table, $id);
+        $jsonData = json_decode(file_get_contents('php://input'), true);
+        if(empty($variable))
+        {
+            if(empty($jsonData))
+            {
+                return false;
+            }
+            else
+            {
+                return $jsonData;
+            }
+        }
+        else
+        {
+            if(empty($jsonData[$variable]))
+            {
+                return false;
+            }
+            else
+            {
+                return $jsonData[$variable];
+            }
+        }
     }
 }
 
